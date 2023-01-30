@@ -7,14 +7,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Aspect
 @Component
-@ConditionalOnClass({ReactiveRedisTemplate.class})
 @RequiredArgsConstructor
 public class ReactiveCacheEvictAspect extends AbstractReactiveCacheAspect {
 
@@ -40,7 +37,7 @@ public class ReactiveCacheEvictAspect extends AbstractReactiveCacheAspect {
 
     private Object evictCache(ProceedingJoinPoint joinPoint, String key) throws Throwable {
         log.info("Evict from cache [{}]", key);
-        cache.delete(key).subscribe();
+        cache.deleteByPattern(key).subscribe();
         return joinPoint.proceed(joinPoint.getArgs());
     }
 

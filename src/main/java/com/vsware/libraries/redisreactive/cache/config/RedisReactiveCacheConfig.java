@@ -11,17 +11,12 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
 import com.vsware.libraries.redisreactive.cache.aspect.AspectUtils;
+import org.redisson.codec.TypedJsonJacksonCodec;
+import org.redisson.spring.starter.RedissonAutoConfigurationCustomizer;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.data.redis.serializer.GenericToStringSerializer;
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -62,21 +57,8 @@ public class RedisReactiveCacheConfig {
     }
 
     @Bean
-    @Primary
-    public ReactiveRedisTemplate<String, Object> reactiveRedisTemplate(ReactiveRedisConnectionFactory reactiveRedisConnectionFactory,
-                                                                       ObjectMapper objectMapper) {
-
-        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(Object.class);
-        serializer.setObjectMapper(objectMapper);
-
-        return new ReactiveRedisTemplate(reactiveRedisConnectionFactory,
-                RedisSerializationContext.newSerializationContext(serializer)
-                        .key(new GenericToStringSerializer(String.class))
-                        .hashKey(new GenericToStringSerializer(String.class))
-                        .value(serializer)
-                        .hashValue(serializer)
-                        .build()
-        );
+    public RedissonAutoConfigurationCustomizer RedissonAutoConfigurationCustomizer(ObjectMapper objectMapper) {
+        return configuration -> configuration.setCodec(new TypedJsonJacksonCodec(Object.class, objectMapper));
     }
 
     @Bean
