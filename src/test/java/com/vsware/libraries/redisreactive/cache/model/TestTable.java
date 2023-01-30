@@ -1,6 +1,7 @@
 package com.vsware.libraries.redisreactive.cache.model;
 
 import java.time.LocalDateTime;
+import java.util.StringJoiner;
 
 public class TestTable {
 
@@ -36,5 +37,14 @@ public class TestTable {
 
     public void setInsertDate(LocalDateTime insertDate) {
         this.insertDate = insertDate;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", TestTable.class.getSimpleName() + "[", "]")
+                .add("id=" + id)
+                .add("name='" + name + "'")
+                .add("insertDate=" + insertDate)
+                .toString();
     }
 }

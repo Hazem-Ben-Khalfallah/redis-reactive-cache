@@ -8,8 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.CorePublisher;
 import reactor.core.publisher.Flux;
@@ -20,7 +18,6 @@ import java.lang.reflect.Method;
 @Slf4j
 @Aspect
 @Component
-@ConditionalOnClass({ReactiveRedisTemplate.class})
 @RequiredArgsConstructor
 public final class ReactiveCacheUpdateAspect extends AbstractReactiveCacheAspect {
 

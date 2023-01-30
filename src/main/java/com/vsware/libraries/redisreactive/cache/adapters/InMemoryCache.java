@@ -37,6 +37,12 @@ public class InMemoryCache implements CachePort {
         return Mono.empty();
     }
 
+    public Mono<Void> deleteByPattern(String pattern) {
+        if (hasError) return Mono.error(new RuntimeException("Fake error"));
+        cachedItems.entrySet().removeIf(entry -> entry.getKey().matches(pattern));
+        return Mono.empty();
+    }
+
     @Override
     public Mono<Object> get(String key) {
         if (hasError) return Mono.error(new RuntimeException("Fake error"));

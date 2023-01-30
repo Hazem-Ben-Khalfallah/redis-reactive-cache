@@ -2,51 +2,57 @@ package com.vsware.libraries.redisreactive.cache.adapters;
 
 import com.vsware.libraries.redisreactive.cache.ports.CachePort;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.redisson.api.RBucketReactive;
+import org.redisson.api.RedissonReactiveClient;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 /**
  * @author hazem
  */
-@ConditionalOnClass({ReactiveRedisTemplate.class})
 @Component
 @RequiredArgsConstructor
 @Profile("!in-memory-test")
 public class RedisCache implements CachePort {
-    private final ReactiveRedisTemplate<String, Object> reactiveRedisTemplate;
+    private final RedissonReactiveClient redissonReactiveClient;
 
     @Override
     public Mono<Void> set(String key, Object value) {
-        return reactiveRedisTemplate.opsForValue().set(key, value)
-                .then();
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(key);
+        return bucket.set(value);
     }
 
     @Override
     public Mono<Void> set(String key, Object value, int ttl, TimeUnit timeUnit) {
-        return reactiveRedisTemplate.opsForValue().set(key, value, Duration.of(ttl, timeUnit.toChronoUnit()))
-                .then();
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(key);
+        return bucket.set(value, ttl, timeUnit);
     }
 
     @Override
     public Mono<Void> delete(String key) {
-        return reactiveRedisTemplate.opsForValue().delete(key)
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(key);
+        return bucket.delete()
+                .then();
+    }
+
+    public Mono<Void> deleteByPattern(String pattern) {
+        return redissonReactiveClient.getKeys()
+                .deleteByPattern(pattern)
                 .then();
     }
 
     @Override
     public Mono<Object> get(String key) {
-        return reactiveRedisTemplate.opsForValue().get(key);
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(key);
+        return bucket.get();
     }
 
     @Override
     public Mono<Void> flushAll() {
-        return reactiveRedisTemplate.getConnectionFactory().getReactiveConnection().serverCommands().flushAll()
+        return redissonReactiveClient.getKeys().flushall()
                 .then();
     }
 }

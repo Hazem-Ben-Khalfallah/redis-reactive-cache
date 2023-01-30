@@ -1,12 +1,12 @@
 package com.vsware.libraries.redisreactive.cache.service;
 
 import com.github.javafaker.Faker;
-import com.vsware.libraries.redisreactive.cache.model.TestTable;
 import com.vsware.libraries.redisreactive.cache.annotation.ReactiveCacheAdd;
 import com.vsware.libraries.redisreactive.cache.annotation.ReactiveCacheEvict;
 import com.vsware.libraries.redisreactive.cache.annotation.ReactiveCacheFlushAll;
 import com.vsware.libraries.redisreactive.cache.annotation.ReactiveCacheGet;
 import com.vsware.libraries.redisreactive.cache.annotation.ReactiveCacheUpdate;
+import com.vsware.libraries.redisreactive.cache.model.TestTable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -98,6 +98,15 @@ public class TestService {
 
     @ReactiveCacheEvict(key = "names", useArgsHash = true)
     public Mono<Void> deleteMultipleDbRecs(List<TestTable> testTables) throws InterruptedException {
+        //imitating call to db
+        Thread.sleep(10);
+        methodCall.incrementAndGet();
+        return Mono.empty();
+        //end
+    }
+
+    @ReactiveCacheEvict(key = "na*", useArgsHash = true)
+    public Mono<Void> deleteMultipleDbRecsByPattern(List<TestTable> testTables) throws InterruptedException {
         //imitating call to db
         Thread.sleep(10);
         methodCall.incrementAndGet();

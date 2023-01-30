@@ -14,6 +14,8 @@ public interface CachePort {
 
     Mono<Void> delete(String key);
 
+    Mono<Void> deleteByPattern(String pattern);
+
     Mono<Object> get(String key);
 
     Mono<Void> flushAll();

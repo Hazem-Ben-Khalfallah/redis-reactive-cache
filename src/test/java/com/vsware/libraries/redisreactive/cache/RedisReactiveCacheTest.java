@@ -10,10 +10,11 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RBucketReactive;
+import org.redisson.api.RedissonReactiveClient;
+import org.redisson.codec.TypedJsonJacksonCodec;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import reactor.test.StepVerifier;
 
 import java.time.LocalDateTime;
@@ -31,7 +32,7 @@ class RedisReactiveCacheTest {
     @Autowired
     private TestService testService;
     @Autowired
-    private ReactiveRedisTemplate<String, Object> reactiveRedisTemplate;
+    private RedissonReactiveClient redissonReactiveClient;
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
@@ -48,14 +49,14 @@ class RedisReactiveCacheTest {
 
     @BeforeEach
     void verifyRedisIsEmpty() {
-        StepVerifier.create(reactiveRedisTemplate.getConnectionFactory().getReactiveConnection().serverCommands().dbSize())
+        StepVerifier.create(redissonReactiveClient.getKeys().count())
                 .expectNext(0L)
                 .verifyComplete();
     }
 
     @AfterEach
     void cleanRedis() {
-        reactiveRedisTemplate.getConnectionFactory().getReactiveConnection().serverCommands().flushAll().subscribe();
+        redissonReactiveClient.getKeys().flushall().subscribe();
         testService.methodCall.set(0);
     }
 
@@ -96,7 +97,8 @@ class RedisReactiveCacheTest {
         String name = faker.name().firstName();
         TestTable valForCache = new TestTable(1, name, LocalDateTime.now());
         //Create cache to exist
-        reactiveRedisTemplate.opsForValue().set(name, valForCache).block();
+        RBucketReactive<TestTable> bucket = redissonReactiveClient.getBucket(name);
+        bucket.set(valForCache).block();
         //call method
         TestTable testTable = testService.getFromDb(name).block();
 
@@ -111,7 +113,8 @@ class RedisReactiveCacheTest {
         String name = faker.name().firstName();
         TestTable valForCache = new TestTable(1, name, LocalDateTime.now());
         //Create cache to exist
-        reactiveRedisTemplate.opsForValue().set(name, valForCache).block();
+        RBucketReactive<TestTable> bucket = redissonReactiveClient.getBucket(name);
+        bucket.set(valForCache).block();
         //call method
         TestTable testTable = testService.getFromDb(name).block();
 
@@ -130,7 +133,8 @@ class RedisReactiveCacheTest {
                 .mapToObj(index -> new TestTable(index, names.get(index), LocalDateTime.now()))
                 .collect(Collectors.toList());
         //Create cache to exist
-        reactiveRedisTemplate.opsForValue().set(cacheKey, valForCache).block();
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(cacheKey);
+        bucket.set(valForCache).block();
 
         List<TestTable> testTables = testService.getMultipleFromDb(names).collectList().block();
 
@@ -154,7 +158,8 @@ class RedisReactiveCacheTest {
     void test_updateDbRecord_whenCacheExists() throws InterruptedException {
         TestTable oldCache = new TestTable(1, faker.name().firstName(), LocalDateTime.now());
         //Create cache to exist
-        reactiveRedisTemplate.opsForValue().set("1", oldCache).block();
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket("1");
+        bucket.set(oldCache).block();
 
         //call method
         TestTable testTable = testService.updateDbRecord(new TestTable(1, faker.name().firstName(), LocalDateTime.now())).block();
@@ -185,7 +190,8 @@ class RedisReactiveCacheTest {
                 .mapToObj(index -> new TestTable(index, names.get(index), LocalDateTime.now()))
                 .collect(Collectors.toList());
         //Create cache to exist
-        reactiveRedisTemplate.opsForValue().set(cacheKey, valForCache).block();
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(cacheKey);
+        bucket.set(valForCache).block();
 
         //modify values
         List<TestTable> recsToUpdate = valForCache.stream().peek(item -> item.setName(faker.name().firstName())).collect(Collectors.toList());
@@ -215,7 +221,8 @@ class RedisReactiveCacheTest {
         String name = faker.name().firstName();
         TestTable valForCache = new TestTable(1, name, LocalDateTime.now());
         //Create cache to exist
-        reactiveRedisTemplate.opsForValue().set(name, valForCache).block();
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(name);
+        bucket.set(valForCache).block();
 
         //Deleting
         testService.deleteDbRec(valForCache).block();
@@ -243,7 +250,8 @@ class RedisReactiveCacheTest {
         String cacheKey = calculateCacheKey("names", testTables);
 
         //Create cache to exist
-        reactiveRedisTemplate.opsForValue().set(cacheKey, testTables).block();
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(cacheKey);
+        bucket.set(testTables).block();
 
         //Deleting
         testService.deleteMultipleDbRecs(testTables).block();
@@ -268,6 +276,40 @@ class RedisReactiveCacheTest {
     }
 
     @Test
+    void test_deleteMultipleDbRecsByPattern_whenCacheExists() throws InterruptedException {
+
+        List<TestTable> testTables = IntStream.range(0, 10)
+                .mapToObj(index -> new TestTable(index, faker.name().firstName(), LocalDateTime.now()))
+                .collect(Collectors.toList());
+        String cacheKey = calculateCacheKey("names", testTables);
+
+        //Create cache to exist
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(cacheKey);
+        bucket.set(testTables).block();
+
+        //Deleting
+        testService.deleteMultipleDbRecsByPattern(testTables).block();
+
+        checkThatKeyHasBeenRemovedFromRedis(cacheKey);
+        checkOriginalMethodIsExecutedNTimes(1);
+    }
+
+    @Test
+    void test_deleteMultipleDbRecsByPattern_whenCacheDoesntExists() throws InterruptedException {
+
+        List<TestTable> testTables = IntStream.range(0, 10)
+                .mapToObj(index -> new TestTable(index, faker.name().firstName(), LocalDateTime.now()))
+                .collect(Collectors.toList());
+        String cacheKey = calculateCacheKey("names", testTables);
+
+        //Deleting
+        testService.deleteMultipleDbRecsByPattern(testTables).block();
+
+        checkThatKeyHasBeenRemovedFromRedis(cacheKey);
+        checkOriginalMethodIsExecutedNTimes(1);
+    }
+
+    @Test
     void test_flushAllDbRecs_whenCacheExists() throws InterruptedException {
 
         List<TestTable> testTables = IntStream.range(0, 10)
@@ -276,7 +318,8 @@ class RedisReactiveCacheTest {
         String cacheKey = calculateCacheKey("names", testTables);
 
         //Create cache to exist
-        reactiveRedisTemplate.opsForValue().set(cacheKey, testTables).block();
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(cacheKey);
+        bucket.set(testTables).block();
 
         //Deleting
         testService.flushAllDbRecs().block();
@@ -286,10 +329,10 @@ class RedisReactiveCacheTest {
     }
 
     private void checkThatRedisContainsACachedObject(String key, TestTable testTable) {
-        StepVerifier.create(reactiveRedisTemplate.opsForValue().get(key).log())
-                .expectNextMatches(redisResp -> {
+        RBucketReactive<TestTable> bucket = redissonReactiveClient.getBucket(key, new TypedJsonJacksonCodec(TestTable.class, objectMapper));
+        StepVerifier.create(bucket.get().log())
+                .expectNextMatches(cacheResponse -> {
                     try {
-                        TestTable cacheResponse = objectMapper.convertValue(redisResp, TestTable.class);
                         return Objects.equals(cacheResponse.getId(), testTable.getId()) &&
                                 cacheResponse.getName().equals(testTable.getName()) &&
                                 cacheResponse.getInsertDate().format(formatter).equals(testTable.getInsertDate().format(formatter));
@@ -301,11 +344,11 @@ class RedisReactiveCacheTest {
     }
 
     private void checkThatRedisContainsACachedList(String key, List<TestTable> testTables) {
-        StepVerifier.create(reactiveRedisTemplate.opsForValue().get(key).log())
-                .expectNextMatches(redisResp -> {
+        RBucketReactive<List<TestTable>> bucket = redissonReactiveClient.getBucket(key, new TypedJsonJacksonCodec(new TypeReference<List<TestTable>>() {}, objectMapper));
+        
+        StepVerifier.create(bucket.get())
+                .expectNextMatches(cacheResponse -> {
                     try {
-                        List<TestTable> cacheResponse = objectMapper.convertValue(redisResp, new TypeReference<List<TestTable>>() {
-                        });
                         return cacheResponse.size() == testTables.size() &&
                                 cacheResponse.get(5).getName().equals(testTables.get(5).getName());
                     } catch (Exception e) {
@@ -316,7 +359,8 @@ class RedisReactiveCacheTest {
     }
 
     private void checkThatKeyHasBeenRemovedFromRedis(String name) {
-        StepVerifier.create(reactiveRedisTemplate.opsForValue().get(name).log())
+        RBucketReactive<Object> bucket = redissonReactiveClient.getBucket(name);
+        StepVerifier.create(bucket.get().log())
                 .expectNextCount(0)
                 .verifyComplete();
     }
