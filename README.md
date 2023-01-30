@@ -65,6 +65,11 @@ public class YourServiceClass {
         //your reactive call to DB
     }
 
+    @ReactiveCacheEvict(key = "nam*") //Evicts keys that start with 'nam' (uses [glob-style](https://en.wikipedia.org/wiki/Glob_(programming)) pattern)
+    public Mono<Void> deleteMultipleDbRecs(List<DbModel> dbModels) {
+        //your reactive call to DB
+    }
+
     @ReactiveCacheFlushAll()
     public Mono<Void> CleanUp() {
         //your reactive call to DB
