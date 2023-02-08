@@ -1,4 +1,4 @@
-package com.vsware.libraries.redisreactive.cache.config;
+package com.vsware.libraries.redisreactive.config;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -24,7 +24,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 @Configuration
-@ComponentScan(basePackages = "com.vsware.libraries.redisreactive.cache")
+@ComponentScan(basePackages = "com.vsware.libraries.redisreactive")
 public class RedisReactiveCacheConfig {
 
     @Value("${spring.redis.date_format:dd-MM-yyyy}")

@@ -7,4 +7,5 @@ import java.util.concurrent.TimeUnit;
 public interface LockerPort {
     Mono<Void> lock(String resourceKey, String fencingKey, int ttl, TimeUnit timeUnit);
     Mono<Void> unlock(String resourceKey, String fencingKey);
+    Mono<Boolean> isLocked(String resourceKey, String fencingKey);
 }

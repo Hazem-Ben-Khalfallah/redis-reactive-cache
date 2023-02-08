@@ -26,13 +26,18 @@ public class Locker implements LockerPort {
         RBucketReactive<String> bucket = redissonReactiveClient.getBucket(resourceKey, StringCodec.INSTANCE);
         return getCache(resourceKey)
                 .flatMap(cacheResponse -> {
-                    if (cacheResponse.equals(fencingKey)) {
+                    if (!cacheResponse.equals(fencingKey)) {
                         return Mono.error(ResourceAlreadyLockedError::new);
                     }
                     return Mono.empty();
                 })
                 .switchIfEmpty(bucket.set(fencingKey, ttl, timeUnit))
-                .onErrorResume(throwable -> Mono.error(new LockInternalError(throwable.getMessage())))
+                .onErrorResume(throwable -> {
+                    if (throwable instanceof ResourceAlreadyLockedError)
+                        return Mono.error(throwable);
+
+                    return Mono.error(new LockInternalError(throwable.getMessage()));
+                })
                 .then();
     }
 
@@ -47,7 +52,14 @@ public class Locker implements LockerPort {
                     return Mono.empty();
                 }).then();
     }
-    
+
+    @Override
+    public Mono<Boolean> isLocked(String resourceKey, String fencingKey) {
+        return getCache(resourceKey)
+                .map(cacheResponse -> cacheResponse.equals(fencingKey))
+                .defaultIfEmpty(false);
+    }
+
     private Mono<String> getCache(String resourceKey) {
         RBucketReactive<String> bucket = redissonReactiveClient.getBucket(resourceKey, StringCodec.INSTANCE);
         return bucket.get()

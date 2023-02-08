@@ -18,7 +18,6 @@ import java.util.Locale;
 @Configuration
 @Testcontainers
 public class RedisTestContainerConfig {
-
     @Container
     public static GenericContainer redisContainer = new GenericContainer(DockerImageName.parse("redis:6.2.6-alpine"))
             .withExposedPorts(6379);
@@ -29,8 +28,8 @@ public class RedisTestContainerConfig {
         redisContainer.start();
         Config config = new Config();
         config.useSingleServer()
-                .setAddress("redis://"+redisContainer.getHost()+":"+redisContainer.getMappedPort(6379));
-        
+                .setAddress("redis://" + redisContainer.getHost() + ":" + redisContainer.getMappedPort(6379));
+
         return new RedissonConnectionFactory(Redisson.create(config));
     }
 

@@ -344,8 +344,9 @@ class RedisReactiveCacheTest {
     }
 
     private void checkThatRedisContainsACachedList(String key, List<TestTable> testTables) {
-        RBucketReactive<List<TestTable>> bucket = redissonReactiveClient.getBucket(key, new TypedJsonJacksonCodec(new TypeReference<List<TestTable>>() {}, objectMapper));
-        
+        RBucketReactive<List<TestTable>> bucket = redissonReactiveClient.getBucket(key, new TypedJsonJacksonCodec(new TypeReference<List<TestTable>>() {
+        }, objectMapper));
+
         StepVerifier.create(bucket.get())
                 .expectNextMatches(cacheResponse -> {
                     try {
