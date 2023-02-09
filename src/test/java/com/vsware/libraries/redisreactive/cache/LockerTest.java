@@ -39,10 +39,6 @@ class LockerTest {
         RedisTestContainerConfig.redisContainer.stop();
     }
 
-    private String calculateCacheKey(String key, Object anyArg) {
-        return key + "_" + Arrays.hashCode(new Object[]{anyArg});
-    }
-
     @BeforeEach
     void verifyRedisIsEmpty() {
         StepVerifier.create(redissonReactiveClient.getKeys().count())
