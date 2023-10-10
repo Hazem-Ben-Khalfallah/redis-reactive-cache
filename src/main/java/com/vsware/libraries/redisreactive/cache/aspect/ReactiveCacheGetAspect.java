@@ -64,18 +64,28 @@ public final class ReactiveCacheGetAspect extends AbstractReactiveCacheAspect {
             return cache.get(key)
                     .map(cacheResponse -> objectMapper.convertValue(cacheResponse, typeRefForMapper))
                     .switchIfEmpty(Mono.defer(() -> putMethodMonoResponseToCache(joinPoint, key)))
-                    .onErrorResume(throwable -> proceedAsMono(joinPoint))
-                    ;
+                    .onErrorResume(throwable -> {
+                        handleError(key, throwable);
+                        return proceedAsMono(joinPoint);
+                    });
         }
 
         if (returnType.isAssignableFrom(Flux.class)) {
             return cache.get(key)
                     .flatMapMany(cacheResponse -> convertToFlux(typeRefForMapper, (List<Object>) cacheResponse))
                     .switchIfEmpty(Flux.defer(() -> putMethodFluxResponseToCache(joinPoint, key)))
-                    .onErrorResume(throwable -> proceedAsFlux(joinPoint))
-                    ;
+                    .onErrorResume(throwable -> {
+                        handleError(key, throwable);
+                        return proceedAsFlux(joinPoint);
+                    });
         }
         throw new UnsupportedReturnTypeError();
+    }
+
+    private void handleError(String key, Throwable throwable) {
+        if (log.isErrorEnabled()) {
+            log.error(String.format("An error has been detected when retrieving key [%s] from cache", key), throwable);
+        }
     }
 
     private Flux<Object> convertToFlux(TypeReference<Object> typeRefForMapper, List<Object> cacheResponse) {
